@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Materiales — Badajoz · Marzo 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #0d0f14;
+    --bg2: #13161e;
+    --bg3: #1a1e28;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #eef0f5;
+    --text2: #8a8fa0;
+    --text3: #555a6b;
+    --green: #22c98c;
+    --green-dim: rgba(34,201,140,0.12);
+    --red: #f05a5a;
+    --red-dim: rgba(240,90,90,0.12);
+    --blue: #4fa3e0;
+    --blue-dim: rgba(79,163,224,0.12);
+    --amber: #f0b44a;
+    --amber-dim: rgba(240,180,74,0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+
+  /* ── LAYOUT ── */
+  .shell { max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+  .topbar-inner {
+    max-width: 1280px; margin: 0 auto;
+    display: flex; align-items: center; gap: 16px;
+    height: 58px; flex-wrap: wrap;
+  }
+  .logo {
+    font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+    color: var(--text); white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .period-pill {
+    font-family: 'DM Mono', monospace; font-size: 11px;
+    color: var(--text2); background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 3px 10px; white-space: nowrap;
+  }
+  .spacer { flex: 1; }
+  .filter-wrap {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: var(--radius-sm); padding: 6px 12px;
+    min-width: 240px;
+  }
+  .filter-wrap svg { color: var(--text3); flex-shrink: 0; }
+  #familyFilter {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
+    width: 100%;
+  }
+  #familyFilter option { background: #1a1e28; }
+
+  /* ── PAGE HEADER ── */
+  .page-header { padding: 36px 0 28px; }
+  .page-header h1 {
+    font-size: 28px; font-weight: 600; color: var(--text);
+    letter-spacing: -0.02em; margin-bottom: 6px;
+  }
+  .page-header p { font-size: 13px; color: var(--text2); }
+  .header-sub {
+    display: flex; align-items: center; gap: 16px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 11px; font-weight: 500; letter-spacing: 0.04em;
+    padding: 3px 10px; border-radius: 20px;
+  }
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-red { background: var(--red-dim); color: var(--red); }
+  .badge-blue { background: var(--blue-dim); color: var(--blue); }
+  .badge-amber { background: var(--amber-dim); color: var(--amber); }
+
+  /* ── KPI STRIP ── */
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px; margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    transition: border-color 0.2s;
+  }
+  .kpi-card:hover { border-color: var(--border2); }
+  .kpi-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .kpi-val { font-size: 24px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+  .kpi-sub { font-size: 12px; margin-top: 4px; }
+  .up { color: var(--green); } .down { color: var(--red); } .neutral { color: var(--text2); }
+  .kpi-bar { height: 2px; background: var(--bg3); border-radius: 2px; margin-top: 12px; }
+  .kpi-bar-fill { height: 2px; border-radius: 2px; }
+
+  /* ── CHART GRID ── */
+  .charts-main { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .chart-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .chart-card h3 { font-size: 12px; color: var(--text2); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+
+  /* ── TOP/FLOP ── */
+  .tf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .tf-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .tf-card h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
+  .tf-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .tf-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .rank-circle {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 600; flex-shrink: 0; margin-top: 1px;
+  }
+  .rc-green { background: var(--green-dim); color: var(--green); }
+  .rc-red { background: var(--red-dim); color: var(--red); }
+  .tf-name { font-size: 13px; color: var(--text); font-weight: 500; }
+  .tf-meta { font-size: 11px; color: var(--text2); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  /* ── SECTION TITLE ── */
+  .section-label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text3); margin-bottom: 14px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  /* ── FAMILY CARDS ── */
+  .fam-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px; margin-bottom: 36px;
+  }
+  .fam-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px;
+    cursor: pointer; transition: all 0.18s;
+    position: relative; overflow: hidden;
+  }
+  .fam-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; border-radius: 3px 0 0 3px;
+  }
+  .fam-card.is-top::before { background: var(--green); }
+  .fam-card.is-flop::before { background: var(--red); }
+  .fam-card.is-neutral::before { background: var(--blue); }
+  .fam-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .fam-badge { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .fam-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 10px; line-height: 1.35; }
+  .fam-ventas { font-size: 20px; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+  .fam-prog { font-size: 12px; margin-top: 3px; }
+  .fam-margen { font-size: 11px; color: var(--text2); margin-top: 6px; font-family: 'DM Mono', monospace; }
+  .fam-arrow {
+    position: absolute; right: 14px; top: 14px;
+    color: var(--text3); font-size: 16px;
+  }
+
+  /* ── DETAIL VIEW ── */
+  #detailView { display: none; }
+  #detailView.visible { display: block; }
+  .back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--text2); background: none; border: none;
+    cursor: pointer; padding: 0; margin-bottom: 24px;
+    transition: color 0.15s;
+  }
+  .back-btn:hover { color: var(--text); }
+  .detail-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
+  }
+  .detail-header h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .detail-header p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  /* ── TIPO TABLE ── */
+  .tipo-table-wrap { overflow-x: auto; }
+  .tipo-table {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .tipo-table th {
+    text-align: left; padding: 8px 12px;
+    color: var(--text3); font-size: 11px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.06em;
+    border-bottom: 1px solid var(--border);
+  }
+  .tipo-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .tipo-table tr:last-child td { border-bottom: none; }
+  .tipo-table tr:hover td { background: var(--bg3); }
+  .mini-bar-bg { width: 80px; height: 4px; background: var(--bg3); border-radius: 2px; margin-top: 4px; }
+  .mini-bar-fill { height: 4px; border-radius: 2px; }
+  .mono { font-family: 'DM Mono', monospace; font-size: 12px; }
+
+  /* ── PUNTOS CARD ── */
+  .puntos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 28px; }
+  .puntos-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .puntos-card h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 14px; }
+  .punto-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .punto-item:last-child { border-bottom: none; }
+  .punto-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .punto-text { font-size: 13px; color: var(--text); line-height: 1.45; }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .animate { animation: fadeUp 0.4s ease both; }
+  .a1 { animation-delay: 0.05s; } .a2 { animation-delay: 0.1s; }
+  .a3 { animation-delay: 0.15s; } .a4 { animation-delay: 0.2s; }
+  .a5 { animation-delay: 0.25s; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .kpi-strip { grid-template-columns: repeat(2, 1fr); }
+    .charts-main, .charts-row, .tf-grid, .puntos-grid { grid-template-columns: 1fr; }
+    .fam-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .topbar-inner { height: auto; padding: 10px 0; }
+    .filter-wrap { min-width: 180px; }
+  }
+  @media (max-width: 560px) {
+    .kpi-strip { grid-template-columns: 1fr 1fr; }
+    .shell { padding: 0 14px 40px; }
+    .page-header h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      MATERIALES · BADAJOZ
+    </div>
+    <span class="period-pill">01/03/26 → 31/03/26</span>
+    <div class="spacer"></div>
+    <div class="filter-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <select id="familyFilter" onchange="handleFilter(this.value)">
+        <option value="">Ir a familia...</option>
+        <option value="main">— Vista general —</option>
+        <option value="1">Utillaje y Herr. Construcción</option>
+        <option value="5">Morteros, Cementos y Áridos</option>
+        <option value="10">Elementos Construcción</option>
+        <option value="20">Tejados y Cobertura</option>
+        <option value="25">Evacuación de Agua</option>
+        <option value="30">Impermeabilización / Reparación</option>
+        <option value="35">Aislamiento</option>
+        <option value="40">Acond. Interior Tabique/Techo</option>
+        <option value="50">Suelo Exterior</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN VIEW -->
+<div id="mainView">
+<div class="shell">
+
+  <div class="page-header animate">
+    <h1>Resultados Marzo 2026</h1>
+    <p>Nave de Materiales de Construcción · Badajoz · Todas las tiendas</p>
+    <div class="header-sub">
+      <span class="badge badge-green">Ventas +25,7% prog</span>
+      <span class="badge badge-green">Pasos caja +28,5%</span>
+      <span class="badge badge-amber">Carrito -2,2%</span>
+      <span class="badge badge-blue">Rank #16 de 20</span>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-strip">
+    <div class="kpi-card animate a1">
+      <div class="kpi-label">Ventas totales</div>
+      <div class="kpi-val">419.588 €</div>
+      <div class="kpi-sub up">+25,7% prog &nbsp;·&nbsp; +22,6% N-2</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:72%;background:var(--green)"></div></div>
+    </div>
+    <div class="kpi-card animate a2">
+      <div class="kpi-label">Margen %</div>
+      <div class="kpi-val">14,9%</div>
+      <div class="kpi-sub up">+0,9 pts tasa &nbsp;·&nbsp; +4,8 pts N-2</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:50%;background:var(--green)"></div></div>
+    </div>
+    <div class="kpi-card animate a3">
+      <div class="kpi-label">Carrito medio</div>
+      <div class="kpi-val">53,88 €</div>
+      <div class="kpi-sub down">-2,2% prog &nbsp;·&nbsp; +3,0% N-2</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:45%;background:var(--red)"></div></div>
+    </div>
+    <div class="kpi-card animate a4">
+      <div class="kpi-label">Pasos por caja</div>
+      <div class="kpi-val">7.788</div>
+      <div class="kpi-sub up">+28,5% prog &nbsp;·&nbsp; +19,0% N-2</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:80%;background:var(--green)"></div></div>
+    </div>
+    <div class="kpi-card animate a5">
+      <div class="kpi-label">Margen s/Ventas</div>
+      <div class="kpi-val">52.266 €</div>
+      <div class="kpi-sub up">+33,7% prog &nbsp;·&nbsp; +79,9% N-2</div>
+      <div class="kpi-bar"><div class="kpi-bar-fill" style="width:85%;background:var(--green)"></div></div>
+    </div>
+  </div>
+
+  <!-- CHARTS MAIN -->
+  <div class="charts-main">
+    <div class="chart-card">
+      <h3>Ventas por familia (€)</h3>
+      <div style="position:relative;height:260px;"><canvas id="ventasChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Margen % por familia</h3>
+      <div style="position:relative;height:260px;"><canvas id="margenDonut"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Crecimiento progresivo vs N-2 (%)</h3>
+      <div style="position:relative;height:220px;"><canvas id="progChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Pasos por caja vs Carrito medio</h3>
+      <div style="position:relative;height:220px;"><canvas id="bubbleChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- TOP / FLOP -->
+  <div class="section-label">Ranking familias — Prog vs año anterior</div>
+  <div class="tf-grid">
+    <div class="tf-card">
+      <h3 style="color:var(--green)">TOP 5 Familias</h3>
+      <div class="tf-item">
+        <div class="rank-circle rc-green">1</div>
+        <div>
+          <div class="tf-name">Elementos Construcción</div>
+          <div class="tf-meta">53.699 € &nbsp;·&nbsp; +115,8% prog &nbsp;·&nbsp; Margen 18,6%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-green">2</div>
+        <div>
+          <div class="tf-name">Impermeabilización / Reparación</div>
+          <div class="tf-meta">20.754 € &nbsp;·&nbsp; +75,5% prog &nbsp;·&nbsp; Margen 19,6%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-green">3</div>
+        <div>
+          <div class="tf-name">Suelo Exterior</div>
+          <div class="tf-meta">6.055 € &nbsp;·&nbsp; +71,4% prog &nbsp;·&nbsp; Margen 23,5%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-green">4</div>
+        <div>
+          <div class="tf-name">Morteros, Cementos y Áridos</div>
+          <div class="tf-meta">139.770 € &nbsp;·&nbsp; +41,5% prog &nbsp;·&nbsp; Margen 15,8%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-green">5</div>
+        <div>
+          <div class="tf-name">Utillaje y Herr. Construcción</div>
+          <div class="tf-meta">31.055 € &nbsp;·&nbsp; +41,9% prog &nbsp;·&nbsp; Margen 23,1%</div>
+        </div>
+      </div>
+    </div>
+    <div class="tf-card">
+      <h3 style="color:var(--red)">FLOP 5 Familias</h3>
+      <div class="tf-item">
+        <div class="rank-circle rc-red">1</div>
+        <div>
+          <div class="tf-name">Aislamiento</div>
+          <div class="tf-meta">20.350 € &nbsp;·&nbsp; -22,4% prog &nbsp;·&nbsp; Margen 10,6%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-red">2</div>
+        <div>
+          <div class="tf-name">Evacuación de Agua</div>
+          <div class="tf-meta">12.509 € &nbsp;·&nbsp; -13,7% prog &nbsp;·&nbsp; Margen 19,3%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-red">3</div>
+        <div>
+          <div class="tf-name">Tejados y Cobertura</div>
+          <div class="tf-meta">23.007 € &nbsp;·&nbsp; +26,9% prog &nbsp;·&nbsp; -22,4% N-2</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-red">4</div>
+        <div>
+          <div class="tf-name">Acond. Interior Tabique/Techo</div>
+          <div class="tf-meta">112.388 € &nbsp;·&nbsp; -0,7% prog &nbsp;·&nbsp; Margen mínimo 9,2%</div>
+        </div>
+      </div>
+      <div class="tf-item">
+        <div class="rank-circle rc-red">5</div>
+        <div>
+          <div class="tf-name">Aislamiento Térmico Acústico</div>
+          <div class="tf-meta">9.015 € &nbsp;·&nbsp; -19,3% prog &nbsp;·&nbsp; Margen -5,4%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PUNTOS FUERTES / A TRABAJAR -->
+  <div class="section-label">Análisis estratégico</div>
+  <div class="puntos-grid">
+    <div class="puntos-card">
+      <h3 style="color:var(--green)">Puntos fuertes</h3>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--green)"></div>
+        <div class="punto-text">Crecimiento de ventas generalizado: +25,7% sobre programa, superando objetivos con todas las familias excepto Aislamiento y Evacuación.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--green)"></div>
+        <div class="punto-text">Elementos Construcción explota con +115,8% prog, impulsado por Ladrillos y Bloques (+165,9%) — demanda de obra civil activa en zona.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--green)"></div>
+        <div class="punto-text">Margen s/Ventas +33,7% prog y +79,9% sobre N-2: la rentabilidad crece más rápido que las ventas, señal de mejora en mix y gestión de tasa.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--green)"></div>
+        <div class="punto-text">Pasos por caja +28,5%: más clientes en tienda. La afluencia está respondiendo bien, sugiere buena visibilidad y merchandising efectivo.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--green)"></div>
+        <div class="punto-text">Impermeabilización y Suelo Exterior con crecimientos superiores al +70% y márgenes saludables (+19-23%). Familias con potencial a desarrollar.</div>
+      </div>
+    </div>
+    <div class="puntos-card">
+      <h3 style="color:var(--red)">Puntos a trabajar</h3>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--red)"></div>
+        <div class="punto-text">Aislamiento cae -22,4% en ventas y su margen es el más bajo (10,6%). El tipo "Aislamiento Térmico Acústico" tiene margen negativo (-5,4%).</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--red)"></div>
+        <div class="punto-text">Carrito medio global -2,2%: más clientes pero comprando menos por ticket. Revisar estrategia de venta cruzada y complementarios en caja.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--red)"></div>
+        <div class="punto-text">Acond. Interior: mayor familia en ventas (112k€) pero margen de solo 9,2% y plano en progresivo (-0,7%). Requiere acción en tasa y surtido.</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--red)"></div>
+        <div class="punto-text">Tejados y Cobertura: aunque sube en progresivo, cae -22,4% vs N-2, con varios tipos con margen inferior al 1% (Panel Aislado, Cobertura Metálica).</div>
+      </div>
+      <div class="punto-item">
+        <div class="punto-dot" style="background:var(--red)"></div>
+        <div class="punto-text">Evacuación de Agua doble caída (-13,7% prog, -18,3% N-2). Canalón de Tejados especialmente crítico con -44,7%. Analizar causa y acción comercial.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAMILIAS -->
+  <div class="section-label">Familias — clic para ver detalle por tipos</div>
+  <div class="fam-grid" id="famGrid"></div>
+
+</div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div id="detailView">
+<div class="shell">
+  <button class="back-btn" onclick="showMain()">
+    ← Volver al resumen general
+  </button>
+  <div id="detailContent"></div>
+</div>
+</div>
+
+<script>
+const DATA = {
+  familias: [
+    { id:1, name:"Utillaje y Herr. Construcción", ventas:31055, prog:41.9, progN2:61.8, margen:23.1, carrito:33.87, pasos:917, msv:5935, rank:19, type:'neutral',
+      tipos:[
+        {name:"Escaleras de Apoyo", v:135, p:-32, m:10.9},
+        {name:"Escaleras de Autosoporte", v:4559, p:5, m:23.9},
+        {name:"Hormigoneras", v:6334, p:202.3, m:9.6},
+        {name:"Andamios", v:3111, p:83.9, m:9.7},
+        {name:"Equipamiento de Obra", v:2692, p:-4, m:31.9},
+        {name:"Carretillas", v:3199, p:73, m:-0.1},
+        {name:"Recogida de Escombro", v:1587, p:168.1, m:35},
+        {name:"Herramientas de Albañil", v:763, p:-3.3, m:20.1},
+        {name:"Herr. Para Plaiquista", v:748, p:22.4, m:26},
+        {name:"Sist. Nivelación Cerámico", v:5367, p:7.1, m:56.6},
+        {name:"Material Para Encofrar", v:285, p:45.4, m:20.1},
+        {name:"Utillaje Cod 48", v:2186, p:41.6, m:12.3},
+      ]
+    },
+    { id:5, name:"Morteros, Cementos y Áridos", ventas:139770, prog:41.5, progN2:36.1, margen:15.8, carrito:31.31, pasos:4464, msv:18470, rank:20, type:'top',
+      tipos:[
+        {name:"Cementos", v:38032, p:76.8, m:9},
+        {name:"Áridos y Gravas", v:7224, p:10.8, m:19.4},
+        {name:"Hormigón Seco", v:1968, p:97, m:-6},
+        {name:"Morteros Albañillería", v:6101, p:42.6, m:5.1},
+        {name:"Morteros Técnicos", v:7647, p:151.3, m:21.7},
+        {name:"Revestimiento Fachada Ext.", v:7017, p:54.4, m:23.5},
+        {name:"Morteros Cola", v:45148, p:14.6, m:16.2},
+        {name:"Morteros Para Juntas", v:5301, p:130, m:46.1},
+        {name:"Morteros Autonivelantes", v:3330, p:47.5, m:12.7},
+        {name:"Yesos y Escayolas", v:11199, p:50.7, m:23},
+        {name:"Aditivos", v:1215, p:86, m:25.1},
+        {name:"Cementos Cod 48", v:4088, p:18.9, m:11.6},
+      ]
+    },
+    { id:10, name:"Elementos Construcción", ventas:53699, prog:115.8, progN2:61.5, margen:18.6, carrito:62.66, pasos:857, msv:8305, rank:3, type:'top',
+      tipos:[
+        {name:"Estructura Metálica", v:3552, p:175.4, m:31.8},
+        {name:"Ladrillos y Bloques", v:48266, p:165.9, m:18.6},
+        {name:"Complementos Constructivos", v:1478, p:38.8, m:20.6},
+        {name:"Elementos Constr Cod 48", v:403, p:-90.8, m:5.9},
+      ]
+    },
+    { id:20, name:"Tejados y Cobertura", ventas:23007, prog:26.9, progN2:-22.4, margen:12.8, carrito:89.17, pasos:258, msv:2447, rank:29, type:'flop',
+      tipos:[
+        {name:"Tejas y Placas Sintéticas", v:2249, p:-1.8, m:19.4},
+        {name:"Tejas", v:6357, p:113, m:13.3},
+        {name:"Panel Aislado", v:4868, p:75.1, m:-1.5},
+        {name:"Cobertura Translúcida Polie.", v:322, p:-44.1, m:11.8},
+        {name:"Cobert. Transl. Policarbonato", v:4984, p:-3, m:25},
+        {name:"Cobertura Metálica", v:1016, p:-44.5, m:0.5},
+        {name:"Cobertura Bituminosa", v:2762, p:-4.4, m:12.5},
+        {name:"Cobertura Bajo Teja", v:248, p:-30.4, m:22},
+        {name:"Accesorios Cobertura", v:201, p:73.6, m:21.5},
+      ]
+    },
+    { id:25, name:"Evacuación de Agua", ventas:12509, prog:-13.7, progN2:-18.3, margen:19.3, carrito:27.31, pasos:458, msv:2029, rank:33, type:'flop',
+      tipos:[
+        {name:"Bajantes y Accesorios PVC", v:3920, p:16.9, m:14.3},
+        {name:"Canalón de Tejados", v:2522, p:-44.7, m:31.4},
+        {name:"Evacuación Agua en Suelo", v:4590, p:-12.8, m:24.9},
+        {name:"Depósitos", v:373, p:16.9, m:1.5},
+        {name:"Fosa Séptica", v:1009, p:16.1, m:-9.9},
+        {name:"Contadores", v:95, p:-25.6, m:16.8},
+      ]
+    },
+    { id:30, name:"Impermeabilización / Rep.", ventas:20754, prog:75.5, progN2:45.7, margen:19.6, carrito:41.10, pasos:505, msv:3390, rank:21, type:'top',
+      tipos:[
+        {name:"Drenaje y Muros Soterrados", v:1137, p:62.6, m:20.5},
+        {name:"Tratamiento de Superficies", v:211, p:52.4, m:24.8},
+        {name:"Láminas Impermeabilizantes", v:10033, p:68.2, m:13.8},
+        {name:"Membranas Líquidas", v:3792, p:132, m:20.7},
+        {name:"Selladores y Adhesivos", v:4652, p:86.7, m:26.7},
+        {name:"Reparación", v:832, p:30.8, m:37.8},
+      ]
+    },
+    { id:35, name:"Aislamiento", ventas:20350, prog:-22.4, progN2:-26.1, margen:10.6, carrito:32.15, pasos:633, msv:1799, rank:33, type:'flop',
+      tipos:[
+        {name:"Sate", v:546, p:-80.1, m:23.9},
+        {name:"Aislamiento Térmico", v:4052, p:-28, m:10.5},
+        {name:"Aislam. Térmico Acústico", v:9015, p:-19.3, m:-5.4},
+        {name:"Aislamiento Acústico", v:1191, p:-34.4, m:17.4},
+        {name:"Sonorización de Espacios", v:314, p:330.3, m:29.2},
+        {name:"Soluciones Específicas", v:762, p:-39.7, m:10.9},
+        {name:"Espuma de Poliuretano", v:4394, p:31.2, m:38.7},
+        {name:"Acces. Instalación y Colas", v:77, p:-56.1, m:18.7},
+      ]
+    },
+    { id:40, name:"Acond. Interior Tab/Techo", ventas:112388, prog:-0.7, progN2:18.1, margen:9.2, carrito:71.49, pasos:1572, msv:8702, rank:16, type:'flop',
+      tipos:[
+        {name:"Bloque de Vidrio", v:1305, p:-37.5, m:28},
+        {name:"Placas de Techo Continuo", v:5297, p:25.6, m:11.8},
+        {name:"Placas de Techo Registrable", v:2931, p:-61.8, m:14.8},
+        {name:"Decoración Tabiques", v:995, p:-22.8, m:44.2},
+        {name:"Accesorios Instalación", v:18102, p:8.8, m:18.9},
+        {name:"Placa de Tabique/Trasdosado", v:46972, p:1.7, m:6},
+        {name:"Perfilería de Montaje", v:36786, p:4.9, m:6.1},
+      ]
+    },
+    { id:50, name:"Suelo Exterior", ventas:6055, prog:71.4, progN2:56.7, margen:23.5, carrito:30.28, pasos:200, msv:1189, rank:27, type:'top',
+      tipos:[
+        {name:"Canto Rodado y Grava Decor.", v:2612, p:64.9, m:23.5},
+        {name:"Elementos Instalación y Ac.", v:521, p:303, m:30.1},
+        {name:"Baldosas Hormigón y Piedra", v:687, p:9.3, m:17.6},
+        {name:"Suelos Técnicos", v:386, p:56.4, m:29.6},
+        {name:"Bordillos", v:1248, p:46.6, m:30.7},
+        {name:"Pavimentos Diversos C.48", v:596, p:848, m:5.1},
+      ]
+    },
+  ]
+};
+
+const typeColor = { top:'var(--green)', flop:'var(--red)', neutral:'var(--blue)' };
+const typeColorHex = { top:'#22c98c', flop:'#f05a5a', neutral:'#4fa3e0' };
+const typeBadge = { top:'TOP', flop:'FLOP', neutral:'—' };
+const typeBadgeColor = { top:'var(--green)', flop:'var(--red)', neutral:'var(--blue)' };
+
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function makeChart(id, config) {
+  destroyChart(id);
+  chartInstances[id] = new Chart(document.getElementById(id), config);
+}
+
+function buildFamGrid() {
+  const grid = document.getElementById('famGrid');
+  DATA.familias.forEach(f => {
+    const card = document.createElement('div');
+    card.className = `fam-card is-${f.type}`;
+    card.id = `famCard_${f.id}`;
+    const progColor = f.prog >= 0 ? 'var(--green)' : 'var(--red)';
+    card.innerHTML = `
+      <span class="fam-arrow">→</span>
+      <div class="fam-badge" style="color:${typeBadgeColor[f.type]}">${typeBadge[f.type]}</div>
+      <div class="fam-name">${f.name}</div>
+      <div class="fam-ventas">${f.ventas.toLocaleString('es-ES')} €</div>
+      <div class="fam-prog" style="color:${progColor}">${f.prog >= 0 ? '+' : ''}${f.prog}% prog</div>
+      <div class="fam-margen">Margen ${f.margen}% &nbsp;·&nbsp; ${f.pasos.toLocaleString('es-ES')} pasos</div>
+    `;
+    card.onclick = () => showDetail(f.id);
+    grid.appendChild(card);
+  });
+}
+
+function buildMainCharts() {
+  const labels = DATA.familias.map(f => f.name.split(' ').slice(0,2).join(' '));
+  const colors = DATA.familias.map(f => typeColorHex[f.type] + 'bb');
+
+  makeChart('ventasChart', {
+    type: 'bar',
+    data: { labels, datasets: [{ data: DATA.familias.map(f => f.ventas), backgroundColor: colors, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, maxRotation: 45, autoSkip: false }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, callback: v => (v/1000).toFixed(0) + 'k' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  makeChart('margenDonut', {
+    type: 'doughnut',
+    data: {
+      labels: DATA.familias.map(f => f.name.split(' ').slice(0,2).join(' ')),
+      datasets: [{ data: DATA.familias.map(f => f.margen), backgroundColor: colors, borderWidth: 2, borderColor: '#13161e' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '60%',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` Margen ${ctx.raw}%` } } }
+    }
+  });
+
+  makeChart('progChart', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Prog %', data: DATA.familias.map(f => f.prog), backgroundColor: DATA.familias.map(f => f.prog >= 0 ? '#22c98c88' : '#f05a5a88'), borderRadius: 4, borderSkipped: false },
+        { label: 'N-2 %', data: DATA.familias.map(f => f.progN2), backgroundColor: DATA.familias.map(f => f.progN2 >= 0 ? '#22c98c33' : '#f05a5a33'), borderRadius: 4, borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555a6b', font: { size: 9 }, maxRotation: 45, autoSkip: false }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+      }
+    }
+  });
+
+  makeChart('bubbleChart', {
+    type: 'bubble',
+    data: {
+      datasets: DATA.familias.map(f => ({
+        label: f.name.split(' ').slice(0,2).join(' '),
+        data: [{ x: f.pasos, y: f.carrito, r: Math.max(5, Math.sqrt(f.ventas / 200)) }],
+        backgroundColor: typeColorHex[f.type] + '88',
+        borderColor: typeColorHex[f.type],
+        borderWidth: 1
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => `${ctx.dataset.label} | Pasos: ${ctx.parsed.x} | Carrito: ${ctx.parsed.y.toFixed(2)}€`
+      }}},
+      scales: {
+        x: { title: { display: true, text: 'Pasos por caja', color: '#555a6b', font: { size: 10 } }, ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 0, max: 5200 },
+        y: { title: { display: true, text: 'Carrito €', color: '#555a6b', font: { size: 10 } }, ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, callback: v => v + '€' }, grid: { color: 'rgba(255,255,255,0.05)' }, min: 10, max: 120 }
+      },
+      layout: { padding: 20 }
+    }
+  });
+}
+
+function showMain() {
+  document.getElementById('mainView').style.display = '';
+  document.getElementById('detailView').classList.remove('visible');
+  document.getElementById('familyFilter').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function showDetail(id) {
+  const f = DATA.familias.find(x => x.id === parseInt(id));
+  if (!f) return;
+  document.getElementById('mainView').style.display = 'none';
+  document.getElementById('detailView').classList.add('visible');
+  document.getElementById('familyFilter').value = id;
+  renderDetail(f);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function handleFilter(val) {
+  if (!val || val === '') return;
+  if (val === 'main') { showMain(); return; }
+  showDetail(parseInt(val));
+}
+
+function renderDetail(f) {
+  const maxV = Math.max(...f.tipos.map(t => t.v));
+  const color = typeColorHex[f.type];
+  const topTipos = [...f.tipos].sort((a, b) => b.v - a.v).slice(0, 3);
+  const caida = f.tipos.filter(t => t.p < 0).sort((a, b) => a.p - b.p).slice(0, 3);
+
+  const tiposRows = f.tipos.map(t => {
+    const barPct = Math.round((t.v / maxV) * 100);
+    const barColor = t.m >= 20 ? '#22c98c' : t.m >= 10 ? '#4fa3e0' : '#f05a5a';
+    const pColor = t.p >= 0 ? 'var(--green)' : 'var(--red)';
+    return `
+      <tr>
+        <td>${t.name}</td>
+        <td class="mono">${t.v.toLocaleString('es-ES')} €
+          <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${barPct}%;background:${color}66"></div></div>
+        </td>
+        <td class="mono" style="color:${pColor}">${t.p >= 0 ? '+' : ''}${t.p}%</td>
+        <td>
+          <span class="mono" style="color:${barColor}">${t.m}%</span>
+          <div class="mini-bar-bg"><div class="mini-bar-fill" style="width:${Math.min(100,Math.max(0,t.m*2))}%;background:${barColor}"></div></div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  const topHTML = topTipos.map((t, i) => `
+    <div class="tf-item">
+      <div class="rank-circle rc-green">${i+1}</div>
+      <div><div class="tf-name">${t.name}</div>
+      <div class="tf-meta">${t.v.toLocaleString('es-ES')} € &nbsp;·&nbsp; ${t.p >= 0 ? '+' : ''}${t.p}% &nbsp;·&nbsp; Margen ${t.m}%</div></div>
+    </div>`).join('');
+
+  const caidaHTML = caida.length ? caida.map((t, i) => `
+    <div class="tf-item">
+      <div class="rank-circle rc-red">${i+1}</div>
+      <div><div class="tf-name">${t.name}</div>
+      <div class="tf-meta">${t.v.toLocaleString('es-ES')} € &nbsp;·&nbsp; ${t.p}% &nbsp;·&nbsp; Margen ${t.m}%</div></div>
+    </div>`).join('') : '<div style="color:var(--text2);font-size:13px;padding:10px 0;">Sin tipos en caída</div>';
+
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-header">
+      <div>
+        <h2>${f.name}</h2>
+        <p>Detalle por tipos &nbsp;·&nbsp; Marzo 2026 · Badajoz</p>
+      </div>
+      <span class="badge badge-${f.type === 'top' ? 'green' : f.type === 'flop' ? 'red' : 'blue'}">${typeBadge[f.type]} familia</span>
+    </div>
+    <div class="kpi-strip" style="grid-template-columns:repeat(5,1fr);">
+      <div class="kpi-card"><div class="kpi-label">Ventas</div><div class="kpi-val">${f.ventas.toLocaleString('es-ES')} €</div><div class="kpi-sub ${f.prog >= 0 ? 'up' : 'down'}">${f.prog >= 0 ? '+' : ''}${f.prog}% prog</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margen %</div><div class="kpi-val">${f.margen}%</div><div class="kpi-sub neutral">vs 14,9% global</div></div>
+      <div class="kpi-card"><div class="kpi-label">Carrito medio</div><div class="kpi-val">${f.carrito.toFixed(2)} €</div><div class="kpi-sub neutral">vs 53,88 € global</div></div>
+      <div class="kpi-card"><div class="kpi-label">Pasos caja</div><div class="kpi-val">${f.pasos.toLocaleString('es-ES')}</div><div class="kpi-sub neutral">de 7.788 totales</div></div>
+      <div class="kpi-card"><div class="kpi-label">Margen s/V</div><div class="kpi-val">${f.msv.toLocaleString('es-ES')} €</div><div class="kpi-sub neutral">Rank #${f.rank}</div></div>
+    </div>
+    <div class="charts-main" style="margin-bottom:14px;">
+      <div class="chart-card">
+        <h3>Ventas por tipo (€)</h3>
+        <div style="position:relative;height:${Math.max(220, f.tipos.length * 36)}px;"><canvas id="detailBarChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Margen % por tipo</h3>
+        <div style="position:relative;height:${Math.max(220, f.tipos.length * 36)}px;"><canvas id="detailMargenChart"></canvas></div>
+      </div>
+    </div>
+    <div class="tf-grid">
+      <div class="tf-card"><h3 style="color:var(--green)">Top tipos por ventas</h3>${topHTML}</div>
+      <div class="tf-card"><h3 style="color:var(--red)">Tipos en caída</h3>${caidaHTML}</div>
+    </div>
+    <div class="section-label">Todos los tipos</div>
+    <div class="chart-card" style="margin-bottom:28px;">
+      <div class="tipo-table-wrap">
+        <table class="tipo-table">
+          <thead><tr><th>Tipo</th><th>Ventas €</th><th>Prog %</th><th>Margen %</th></tr></thead>
+          <tbody>${tiposRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  setTimeout(() => {
+    const tLabels = f.tipos.map(t => t.name.length > 24 ? t.name.slice(0, 22) + '…' : t.name);
+    const barColors = f.tipos.map(t => t.m >= 20 ? '#22c98c99' : t.m >= 10 ? '#4fa3e099' : '#f05a5a99');
+
+    makeChart('detailBarChart', {
+      type: 'bar',
+      data: { labels: tLabels, datasets: [{ data: f.tipos.map(t => t.v), backgroundColor: color + '99', borderRadius: 4, borderSkipped: false }] },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, callback: v => (v/1000).toFixed(1) + 'k' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#8a8fa0', font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+
+    makeChart('detailMargenChart', {
+      type: 'bar',
+      data: { labels: tLabels, datasets: [{ data: f.tipos.map(t => t.m), backgroundColor: barColors, borderRadius: 4, borderSkipped: false }] },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#555a6b', font: { size: 10, family: 'DM Mono' }, callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { ticks: { color: '#8a8fa0', font: { size: 11 } }, grid: { display: false } }
+        }
+      }
+    });
+  }, 60);
+}
+
+buildFamGrid();
+buildMainCharts();
+</script>
+</body>
+</html>
